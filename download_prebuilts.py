@@ -10,6 +10,7 @@ import shutil
 import sys
 import urllib.error
 import urllib.request
+import os
 
 _ARTIFACT_URL_FMT = "https://ci.android.com/builds/submitted/{build_id}/{build_target}/latest/raw/{filename}"
 
@@ -62,14 +63,10 @@ class GkiDownloader(Downloader):
         self._cleanup()
 
     def download(self):
-        try:
-            self._download_artifact("ci_target_mapping.json", "ci_target_mapping.json")
-            with open("ci_target_mapping.json", "r", encoding="utf-8") as f:
-                download_configs = json.load(f).get("download_configs")
-        except urllib.error.HTTPError:
-            self._download_artifact("download_configs.json", "download_configs.json")
-            with open("download_configs.json", "r", encoding="utf-8") as f:
-                download_configs = json.load(f)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        json_path = os.path.join(script_dir, "ci_target_mapping.json")
+        with open(json_path, "r", encoding="utf-8") as f:
+            download_configs = json.load(f).get("download_configs")
 
         for filename, config in download_configs.items():
             self._download_artifact(
@@ -85,22 +82,8 @@ class GkiDownloader(Downloader):
                 f.write("This build is not signed, use unsigned boot images.\n")
 
 
-class Fips140Downloader(Downloader):
-    def preprocess(self):
-        self._cleanup()
-
-    def download(self):
-        self._download_artifact("fips140.ko", "fips140.ko")
-
-    def postprocess(self):
-        with open("BUILD.bazel", "w") as f:
-            f.write('exports_files(["fips140.ko"])\n')
-
-
 TARGET_DOWNLOADERS = {
     "kernel_aarch64": GkiDownloader,
-    "kernel_aarch64_16k": GkiDownloader,
-    "kernel_aarch64_fips140": Fips140Downloader,
 }
 
 if __name__ == "__main__":
