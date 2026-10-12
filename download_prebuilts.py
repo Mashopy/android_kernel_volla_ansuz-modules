@@ -7,12 +7,24 @@ import argparse
 import json
 import os
 import shutil
+import socket
 import sys
 import urllib.error
 import urllib.request
 import os
 
 _ARTIFACT_URL_FMT = "https://ci.android.com/builds/submitted/{build_id}/{build_target}/latest/raw/{filename}"
+
+# ci.android.com might have issue with IPv6, try with IPv4 first
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _ipv4_first_getaddrinfo(*args, **kwargs):
+    res = _orig_getaddrinfo(*args, **kwargs)
+    return sorted(res, key=lambda r: r[0] != socket.AF_INET)
+
+
+socket.getaddrinfo = _ipv4_first_getaddrinfo
 
 
 class Downloader(object):
